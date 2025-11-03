@@ -7,6 +7,12 @@ use RuntimeException;
 
 class StorageManager
 {
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
     public function __construct(private PDO $pdo)
     {
     }
@@ -54,6 +60,9 @@ class StorageManager
     public function get(int $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM storage_configs WHERE id = :id');
+        $getParams = array();
+        $getParams[':id'] = $id;
+        $stmt->execute($getParams);
         $stmt->execute([':id' => $id]);
         $storage = $stmt->fetch();
         return $storage ?: null;
@@ -67,6 +76,12 @@ class StorageManager
             $config = ['path' => __DIR__ . '/../../storage/local', 'public_url' => '/storage/local'];
             $this->ensureStorageConfigDefaults('local', $config);
             $insert = $this->pdo->prepare('INSERT INTO storage_configs (name, type, is_default, config_json, created_at) VALUES (:name, :type, 1, :config, :created_at)');
+            $insertParams = array();
+            $insertParams[':name'] = '本地图库';
+            $insertParams[':type'] = 'local';
+            $insertParams[':config'] = json_encode($config, JSON_UNESCAPED_UNICODE);
+            $insertParams[':created_at'] = date('c');
+            $insert->execute($insertParams);
             $insert->execute([
                 ':name' => '本地图库',
                 ':type' => 'local',
@@ -81,6 +96,12 @@ class StorageManager
                 $encoded = json_encode($config, JSON_UNESCAPED_UNICODE);
                 if ($encoded !== (string)$storage['config_json']) {
                     $update = $this->pdo->prepare('UPDATE storage_configs SET config_json = :config WHERE id = :id');
+                    $updateParams = array();
+                    $updateParams[':config'] = $encoded;
+                    $updateParams[':id'] = (int)$storage['id'];
+                    $update->execute($updateParams);
+                }
+            }
                     $update->execute([
                         ':config' => $encoded,
                         ':id' => (int)$storage['id'],
@@ -97,11 +118,19 @@ class StorageManager
     {
         $this->pdo->exec('UPDATE storage_configs SET is_default = 0');
         $stmt = $this->pdo->prepare('UPDATE storage_configs SET is_default = 1 WHERE id = :id');
+        $defaultParams = array();
+        $defaultParams[':id'] = $id;
+        $stmt->execute($defaultParams);
         $stmt->execute([':id' => $id]);
     }
 
     public function save(string $name, string $type, array $config, bool $isDefault, ?int $id = null): void
     {
+        $payload = array();
+        $payload[':name'] = $name;
+        $payload[':type'] = $type;
+        $payload[':config'] = json_encode($config, JSON_UNESCAPED_UNICODE);
+        $payload[':created_at'] = date('c');
         $payload = [
             ':name' => $name,
             ':type' => $type,
