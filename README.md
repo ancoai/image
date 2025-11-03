@@ -27,6 +27,9 @@ php -S localhost:8000
 
 > 如果仍需将站点部署在 `public/` 目录，可继续使用 `php -S localhost:8000 -t public`，该入口会委托到根目录的 `index.php` 路由。
 
+php -S localhost:8000 -t public
+```
+
 首次访问会自动初始化 SQLite 数据库与默认管理员账号。本地上传的图片保存在 `storage/local`，并通过 `public/storage` 符号链接对外提供访问。
 
 R2 上传使用 S3 API V4 签名，需在后台配置 `account_id`、`access_key`、`secret_key`、`bucket`、`endpoint` 等字段。

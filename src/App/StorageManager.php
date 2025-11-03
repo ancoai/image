@@ -13,6 +13,8 @@ class StorageManager
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+    public function __construct(private PDO $pdo)
+    {
     }
 
     public function ensureStorageConfigDefaults(string $type, array &$config): void
@@ -61,6 +63,7 @@ class StorageManager
         $getParams = array();
         $getParams[':id'] = $id;
         $stmt->execute($getParams);
+        $stmt->execute([':id' => $id]);
         $storage = $stmt->fetch();
         return $storage ?: null;
     }
@@ -79,6 +82,12 @@ class StorageManager
             $insertParams[':config'] = json_encode($config, JSON_UNESCAPED_UNICODE);
             $insertParams[':created_at'] = date('c');
             $insert->execute($insertParams);
+            $insert->execute([
+                ':name' => '本地图库',
+                ':type' => 'local',
+                ':config' => json_encode($config, JSON_UNESCAPED_UNICODE),
+                ':created_at' => date('c'),
+            ]);
         } else {
             $stmt = $this->pdo->query("SELECT * FROM storage_configs WHERE type = 'local'");
             foreach ($stmt->fetchAll() as $storage) {
@@ -93,6 +102,15 @@ class StorageManager
                     $update->execute($updateParams);
                 }
             }
+                    $update->execute([
+                        ':config' => $encoded,
+                        ':id' => (int)$storage['id'],
+                    ]);
+                }
+            }
+                ':config' => json_encode(['path' => __DIR__ . '/../../storage/local', 'public_url' => '/storage/local']),
+                ':created_at' => date('c'),
+            ]);
         }
     }
 
@@ -103,6 +121,7 @@ class StorageManager
         $defaultParams = array();
         $defaultParams[':id'] = $id;
         $stmt->execute($defaultParams);
+        $stmt->execute([':id' => $id]);
     }
 
     public function save(string $name, string $type, array $config, bool $isDefault, ?int $id = null): void
@@ -112,6 +131,12 @@ class StorageManager
         $payload[':type'] = $type;
         $payload[':config'] = json_encode($config, JSON_UNESCAPED_UNICODE);
         $payload[':created_at'] = date('c');
+        $payload = [
+            ':name' => $name,
+            ':type' => $type,
+            ':config' => json_encode($config, JSON_UNESCAPED_UNICODE),
+            ':created_at' => date('c'),
+        ];
 
         if ($id === null) {
             $stmt = $this->pdo->prepare('INSERT INTO storage_configs (name, type, is_default, config_json, created_at) VALUES (:name, :type, :is_default, :config, :created_at)');

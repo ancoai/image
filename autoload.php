@@ -13,6 +13,7 @@ if (!function_exists('str_starts_with')) {
 }
 
 spl_autoload_register(function ($class): void {
+spl_autoload_register(function (string $class): void {
     $prefix = 'App\\';
     if (str_starts_with($class, $prefix)) {
         $path = __DIR__ . '/src/' . str_replace('App\\', 'App/', $class) . '.php';

@@ -28,6 +28,8 @@
     <div class="puzzle-wrapper">
         <canvas id="puzzle-board" aria-label="拼图画布"></canvas>
         <div id="puzzle-error" class="alert error" style="display:none;"></div>
+    <div class="puzzle-wrapper">
+        <canvas id="puzzle-board" aria-label="拼图画布"></canvas>
         <div id="puzzle-success" class="alert success" style="display:none;">🎉 恭喜，拼图完成！</div>
         <?php $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'; ?>
         <div class="share-link">
@@ -194,6 +196,16 @@ window.addEventListener('beforeunload', () => {
     board.destroy();
     if (timerHandle !== null) {
         window.clearInterval(timerHandle);
+const canvas = document.getElementById('puzzle-board');
+const successBanner = document.getElementById('puzzle-success');
+initPuzzle(canvas, {
+    imageUrl: <?= json_encode($puzzle['public_url']) ?>,
+    cols: <?= (int)$puzzle['grid_cols'] ?>,
+    rows: <?= (int)$puzzle['grid_rows'] ?>,
+    snapDistance: 18,
+    onComplete: () => {
+        successBanner.style.display = 'block';
+        successBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 });
 </script>
