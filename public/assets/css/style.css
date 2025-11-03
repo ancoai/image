@@ -129,10 +129,81 @@ input, select, textarea {
     color: var(--success);
 }
 
+.alert.error {
+    background: rgba(217,83,79,0.12);
+    color: #d9534f;
+}
+
 .puzzle-wrapper {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+.puzzle-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.puzzle-controls button,
+.puzzle-controls .btn {
+    border-radius: 12px;
+    background: rgba(91,127,255,0.12);
+    color: var(--primary);
+    border: 1px solid rgba(91,127,255,0.24);
+    font-size: 0.95rem;
+}
+
+.puzzle-controls button:hover,
+.puzzle-controls .btn:hover {
+    background: rgba(91,127,255,0.18);
+}
+
+.puzzle-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+    background: rgba(31,42,68,0.04);
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+}
+
+.puzzle-controls input[type="range"] {
+    width: 120px;
+    margin: 0;
+}
+
+.puzzle-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(31,42,68,0.05);
+    border-radius: 12px;
+    font-size: 0.95rem;
+}
+
+.puzzle-stats strong {
+    font-size: 1.05rem;
+    color: var(--primary);
+}
+
+.puzzle-experimental {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(91,127,255,0.12), rgba(255,255,255,0.9));
+    border: 1px dashed rgba(91,127,255,0.3);
+}
+
+.puzzle-experimental ul {
+    margin: 0.75rem 0 0;
+    padding-left: 1.2rem;
+    color: var(--muted);
 }
 
 .puzzle-wrapper canvas {
@@ -140,6 +211,28 @@ input, select, textarea {
     border-radius: 12px;
     box-shadow: 0 12px 30px rgba(31,42,68,0.18);
     background: var(--surface);
+}
+
+.insight-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.insight-list li {
+    background: rgba(31,42,68,0.04);
+    border-radius: 12px;
+    padding: 0.9rem 1.1rem;
+    line-height: 1.5;
+}
+
+.insight-list li strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--primary);
+    margin-bottom: 0.35rem;
 }
 
 .share-link {

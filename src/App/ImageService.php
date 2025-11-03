@@ -11,6 +11,7 @@ class ImageService
     {
     }
 
+    public function createFromUpload(array $file, int $storageId, int $userId, string $title, string $visibility, ?int $cols, ?int $rows): array
     public function createFromUpload(array $file, int $storageId, int $userId, string $title, string $visibility, int $cols, int $rows): array
     {
         if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -34,10 +35,28 @@ class ImageService
             throw new RuntimeException('无法读取图片信息');
         }
 
+        if (!is_file($file['tmp_name'])) {
+            throw new RuntimeException('上传文件不存在或已被移除');
+        }
+
         $filename = uniqid('img_', true) . '.' . $ext;
         $relativePath = $filename;
 
         if ($storage['type'] === 'local') {
+            $this->storageManager->ensureStorageConfigDefaults('local', $config);
+            $destination = rtrim($config['path'], '/') . '/' . $filename;
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                if (!@rename($file['tmp_name'], $destination)) {
+                    if (!@copy($file['tmp_name'], $destination)) {
+                        throw new RuntimeException('保存图片失败');
+                    }
+                    @unlink($file['tmp_name']);
+                }
+            }
+            $storage['config_json'] = json_encode($config, JSON_UNESCAPED_UNICODE);
+            $publicUrl = $this->storageManager->publicUrlFor($storage, $relativePath);
+        } elseif ($storage['type'] === 'r2') {
+            $this->storageManager->ensureStorageConfigDefaults('r2', $config);
             $path = rtrim($config['path'] ?? (__DIR__ . '/../../storage/local'), '/');
             if (!is_dir($path)) {
                 mkdir($path, 0775, true);
@@ -52,6 +71,8 @@ class ImageService
         } else {
             throw new RuntimeException('未知图库类型');
         }
+
+        [$cols, $rows] = $this->normalizeGrid($cols, $rows, (int)$imageInfo[0], (int)$imageInfo[1]);
 
         $stmt = $this->pdo->prepare('INSERT INTO images (storage_id, user_id, filename, original_name, width, height, created_at, public_url) VALUES (:storage_id, :user_id, :filename, :original_name, :width, :height, :created_at, :public_url)');
         $stmt->execute([
@@ -80,6 +101,36 @@ class ImageService
         ]);
 
         return $this->getPuzzleBySlug($slug);
+    }
+
+    private function normalizeGrid(?int $cols, ?int $rows, int $width, int $height): array
+    {
+        $cols = $cols ?? 0;
+        $rows = $rows ?? 0;
+        $cols = $cols >= 2 && $cols <= 12 ? $cols : 0;
+        $rows = $rows >= 2 && $rows <= 12 ? $rows : 0;
+
+        if ($cols === 0 && $rows === 0) {
+            $aspect = $height > 0 ? $width / $height : 1.0;
+            $base = max(3, min(6, (int)round(sqrt($width * $height) / 120)));
+            $base = max(3, min(6, $base));
+            if ($aspect >= 1) {
+                $cols = (int)round($base * $aspect * 1.2);
+                $rows = (int)round($base / ($aspect > 0 ? $aspect : 1));
+            } else {
+                $cols = (int)round($base * $aspect * 1.1);
+                $rows = (int)round($base / ($aspect > 0 ? $aspect : 1));
+            }
+        } elseif ($cols === 0) {
+            $cols = (int)round($rows * ($width / max($height, 1)));
+        } elseif ($rows === 0) {
+            $rows = (int)round($cols * (max($height, 1) / max($width, 1)));
+        }
+
+        $cols = max(2, min(12, $cols ?: 4));
+        $rows = max(2, min(12, $rows ?: 3));
+
+        return [$cols, $rows];
     }
 
     public function getPuzzleBySlug(string $slug): ?array

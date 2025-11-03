@@ -32,12 +32,14 @@ class VerificationService
         return $this->getOrCreateToken($userId);
     }
 
+    public function recordVerification(string $token, bool $success): bool
     public function recordVerification(string $token, bool $success): void
     {
         $stmt = $this->pdo->prepare('SELECT * FROM verification_tokens WHERE token = :token');
         $stmt->execute([':token' => $token]);
         $record = $stmt->fetch();
         if (!$record) {
+            return false;
             return;
         }
 
@@ -54,6 +56,8 @@ class VerificationService
             ':success' => $success ? 1 : 0,
             ':created_at' => date('c'),
         ]);
+
+        return true;
     }
 
     public function overview(): array
