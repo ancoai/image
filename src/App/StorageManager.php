@@ -87,6 +87,9 @@ class StorageManager
                     ]);
                 }
             }
+                ':config' => json_encode(['path' => __DIR__ . '/../../storage/local', 'public_url' => '/storage/local']),
+                ':created_at' => date('c'),
+            ]);
         }
     }
 

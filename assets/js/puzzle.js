@@ -33,6 +33,9 @@ class PuzzleBoard {
         this.onProgress = options.onProgress ?? (() => {});
         this.onError = options.onError ?? (() => {});
         this.onShuffle = options.onShuffle ?? (() => {});
+        this.snapDistance = options.snapDistance || 20;
+        this.backgroundOpacity = options.backgroundOpacity || 0.35;
+        this.onComplete = options.onComplete || (() => {});
         this.pieces = [];
         this.draggingPiece = null;
         this.offsetX = 0;
@@ -104,12 +107,38 @@ class PuzzleBoard {
 
     generatePieces(pieceWidth, pieceHeight) {
         const pieces = [];
+        this.image.addEventListener('load', () => this.setup());
+        this.image.src = options.imageUrl;
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    setup() {
+        this.baseWidth = this.image.width;
+        this.baseHeight = this.image.height;
+        this.resize();
+    }
+
+    resize() {
+        const maxWidth = this.canvas.parentElement.clientWidth;
+        const scale = Math.min(maxWidth / this.baseWidth, 1);
+        this.canvas.width = this.baseWidth * scale;
+        this.canvas.height = this.baseHeight * scale;
+        this.scale = scale;
+        this.generatePieces();
+        this.draw();
+    }
+
+    generatePieces() {
+        const pieceWidth = this.canvas.width / this.cols;
+        const pieceHeight = this.canvas.height / this.rows;
+        this.pieces = [];
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const targetX = col * pieceWidth;
                 const targetY = row * pieceHeight;
                 const position = this.scatterPosition(targetX, targetY, pieceWidth, pieceHeight);
                 pieces.push({
+                const piece = {
                     col,
                     row,
                     width: pieceWidth,
@@ -171,6 +200,21 @@ class PuzzleBoard {
             if (piece.placed) {
                 continue;
             }
+                    x: Math.random() * (this.canvas.width - pieceWidth),
+                    y: Math.random() * (this.canvas.height - pieceHeight),
+                    placed: false,
+                };
+                this.pieces.push(piece);
+            }
+        }
+    }
+
+    pointerDown(x, y) {
+        if (this.completed) {
+            return;
+        }
+        for (let i = this.pieces.length - 1; i >= 0; i--) {
+            const piece = this.pieces[i];
             if (x >= piece.x && x <= piece.x + piece.width && y >= piece.y && y <= piece.y + piece.height) {
                 this.draggingPiece = piece;
                 this.offsetX = x - piece.x;
@@ -189,6 +233,8 @@ class PuzzleBoard {
         const piece = this.draggingPiece;
         piece.x = clamp(x - this.offsetX, 0, this.canvas.width - piece.width);
         piece.y = clamp(y - this.offsetY, 0, this.canvas.height - piece.height);
+        this.draggingPiece.x = x - this.offsetX;
+        this.draggingPiece.y = y - this.offsetY;
         this.draw();
     }
 
@@ -200,6 +246,7 @@ class PuzzleBoard {
         this.draggingPiece = null;
         const tolerance = Math.max(this.snapDistance, Math.min(piece.width, piece.height) * 0.35);
         if (Math.abs(piece.x - piece.targetX) < tolerance && Math.abs(piece.y - piece.targetY) < tolerance) {
+        if (Math.abs(piece.x - piece.targetX) < this.snapDistance && Math.abs(piece.y - piece.targetY) < this.snapDistance) {
             piece.x = piece.targetX;
             piece.y = piece.targetY;
             piece.placed = true;
@@ -210,6 +257,8 @@ class PuzzleBoard {
             this.completed = true;
             this.completedAt = performance.now();
             this.reportProgress();
+        if (this.pieces.every(p => p.placed)) {
+            this.completed = true;
             this.onComplete();
         }
     }
@@ -242,6 +291,10 @@ class PuzzleBoard {
         }
         this.ctx.globalAlpha = 1;
         this.ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        this.ctx.globalAlpha = this.backgroundOpacity;
+        this.ctx.drawImage(this.image, 0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.globalAlpha = 1;
+        this.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
         this.ctx.lineWidth = 1;
         for (let i = 1; i < this.cols; i++) {
             const x = (this.canvas.width / this.cols) * i;
@@ -276,6 +329,7 @@ class PuzzleBoard {
             );
             this.ctx.strokeStyle = piece.placed ? 'rgba(30,144,255,0.6)' : 'rgba(0,0,0,0.45)';
             this.ctx.lineWidth = piece.placed ? 2 : 1;
+            this.ctx.strokeStyle = 'rgba(0,0,0,0.5)';
             this.ctx.strokeRect(piece.x, piece.y, piece.width, piece.height);
             this.ctx.restore();
         });
@@ -420,6 +474,26 @@ export function initPuzzle(canvas, options = {}) {
         }
         evt.preventDefault();
         const pos = handler(evt);
+}
+
+export function initPuzzle(canvas, options) {
+    const board = new PuzzleBoard(canvas, options);
+    const handler = evt => {
+        const rect = canvas.getBoundingClientRect();
+        const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
+        return { x, y };
+    };
+
+    const start = evt => {
+        evt.preventDefault();
+        const pos = handler(evt.touches ? evt.touches[0] : evt);
+        board.pointerDown(pos.x, pos.y);
+    };
+    const move = evt => {
+        if (!board.draggingPiece) return;
+        evt.preventDefault();
+        const pos = handler(evt.touches ? evt.touches[0] : evt);
         board.pointerMove(pos.x, pos.y);
     };
     const end = evt => {
@@ -441,6 +515,12 @@ export function initPuzzle(canvas, options = {}) {
         listeners.length = 0;
         originalDestroy();
     };
+    canvas.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', end, { passive: false });
 
     return board;
 }

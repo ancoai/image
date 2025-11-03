@@ -12,6 +12,7 @@ class ImageService
     }
 
     public function createFromUpload(array $file, int $storageId, int $userId, string $title, string $visibility, ?int $cols, ?int $rows): array
+    public function createFromUpload(array $file, int $storageId, int $userId, string $title, string $visibility, int $cols, int $rows): array
     {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             throw new RuntimeException('上传失败');
@@ -56,6 +57,16 @@ class ImageService
             $publicUrl = $this->storageManager->publicUrlFor($storage, $relativePath);
         } elseif ($storage['type'] === 'r2') {
             $this->storageManager->ensureStorageConfigDefaults('r2', $config);
+            $path = rtrim($config['path'] ?? (__DIR__ . '/../../storage/local'), '/');
+            if (!is_dir($path)) {
+                mkdir($path, 0775, true);
+            }
+            $destination = $path . '/' . $filename;
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                throw new RuntimeException('保存图片失败');
+            }
+            $publicUrl = rtrim($config['public_url'] ?? '/storage/local', '/') . '/' . $filename;
+        } elseif ($storage['type'] === 'r2') {
             $publicUrl = $this->uploadToR2($file['tmp_name'], $filename, $config);
         } else {
             throw new RuntimeException('未知图库类型');

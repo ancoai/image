@@ -33,12 +33,14 @@ class VerificationService
     }
 
     public function recordVerification(string $token, bool $success): bool
+    public function recordVerification(string $token, bool $success): void
     {
         $stmt = $this->pdo->prepare('SELECT * FROM verification_tokens WHERE token = :token');
         $stmt->execute([':token' => $token]);
         $record = $stmt->fetch();
         if (!$record) {
             return false;
+            return;
         }
 
         $update = $this->pdo->prepare('UPDATE verification_tokens SET success_count = success_count + :delta, last_verified_at = :last WHERE id = :id');
